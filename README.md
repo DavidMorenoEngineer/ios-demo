@@ -43,6 +43,14 @@ The same screens, rearranged for the extra room.
 |:---------------------------------------:|:-----------------------:|
 | <img src="docs/screenshots/ipad-landscape-profile.png" width="420"> | <img src="docs/screenshots/ipad-landscape-fullscreen.png" width="420"> |
 
+## Demo videos
+
+A scripted tour of the advisor list and profile, one device at a time (click a preview for the full-quality MP4).
+
+| iPhone (≈ 1 min) | iPad (≈ 1 min) |
+|:----------------:|:--------------:|
+| [<img src="docs/videos/demo-phone.gif" width="240">](docs/videos/demo-phone.mp4) | [<img src="docs/videos/demo-pad.gif" width="420">](docs/videos/demo-pad.mp4) |
+
 ## Adaptive by design
 
 Layout follows the space the view is given, not the device model, so it also holds up in iPad split-screen
