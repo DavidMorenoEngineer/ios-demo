@@ -3,7 +3,19 @@ import SwiftUI
 
 @main
 struct SideKixDemoApp: App {
-    private let store = Store(initialState: AdvisorsFeature.State()) { AdvisorsFeature() }
+    private let store: StoreOf<AdvisorsFeature> = {
+        let demo = DemoOptions.current
+        return Store(initialState: AdvisorsFeature.State(
+            query: demo.query ?? "",
+            offerFilter: demo.offer,
+            pendingAdvisorID: demo.advisorID,
+            pendingFullScreen: demo.immersive
+        )) { AdvisorsFeature() }
+    }()
+
+    private var isRunningUnitTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
 
     init() {
         // Serif large/inline titles that match the site's display face.
@@ -24,9 +36,14 @@ struct SideKixDemoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AdvisorsView(store: store)
-                .preferredColorScheme(.dark)
-                .background(SX.bg.ignoresSafeArea())
+            if isRunningUnitTests {
+                // The unit-test host launches the app; keep it idle so it doesn't hit unimplemented test clients.
+                Color.clear
+            } else {
+                AdvisorsView(store: store)
+                    .preferredColorScheme(.dark)
+                    .background(SX.bg.ignoresSafeArea())
+            }
         }
     }
 }

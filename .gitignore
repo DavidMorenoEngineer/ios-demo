@@ -12,3 +12,4 @@ build/
 *.mov
 *.gif
 docs/videos/
+DerivedCI/

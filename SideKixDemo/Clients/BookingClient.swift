@@ -3,7 +3,8 @@ import Foundation
 
 /// Requests a session with an advisor. Sessions open in a later phase, so the
 /// mock acknowledges the interest and returns the confirmation to show.
-struct BookingClient {
+@DependencyClient
+struct BookingClient: Sendable {
     var request: @Sendable (_ advisor: Advisor) async throws -> String
 }
 
@@ -19,7 +20,7 @@ extension BookingClient {
 extension BookingClient: DependencyKey {
     static let liveValue: Self = .mock(latency: .milliseconds(300))
     static let previewValue: Self = .mock()
-    static let testValue: Self = .mock()
+    static let testValue = Self()
 }
 
 extension DependencyValues {

@@ -4,7 +4,8 @@ import Foundation
 /// Fetches advisors. All demo content lives here, behind the client, so the
 /// reducers never know whether data is local or remote: swap `liveValue` for a
 /// URLSession-backed implementation and nothing else changes.
-struct AdvisorsClient {
+@DependencyClient
+struct AdvisorsClient: Sendable {
     var fetchAll: @Sendable () async throws -> [Advisor]
 }
 
@@ -50,8 +51,9 @@ extension AdvisorsClient: DependencyKey {
     // No backend in the demo: "live" is the mock with a realistic delay.
     static let liveValue: Self = .mock(latency: .milliseconds(450))
     static let previewValue: Self = .mock()
-    // Tests get the same data instantly; override `fetchAll` to exercise failures.
-    static let testValue: Self = .mock()
+    // Unimplemented: a test that reaches this client without overriding it fails, so each
+    // test states exactly what the feature touches.
+    static let testValue = Self()
 }
 
 extension DependencyValues {

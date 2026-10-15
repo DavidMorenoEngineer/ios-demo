@@ -72,21 +72,22 @@ SideKixDemo/
 ├── Clients/         # AdvisorsClient, BookingClient — all mock data lives here
 ├── Components/      # AvatarView, LevelBadge, TagChip, FlowLayout, SearchField, Toast, GoldButtonStyle
 └── Features/Advisors/
-    ├── AdvisorsFeature.swift     # list state: phase, query, offer filter, selection, path, profiles
+    ├── AdvisorsFeature.swift     # list state: phase, query, filter, selection, StackState path, @Presents detail
     ├── ProfileFeature.swift      # one advisor: full-screen flag, booking, toast
     ├── AdvisorsView.swift        # size-class switch → stack (iPhone) or split view (iPad)
     ├── AdvisorProfileView.swift  # adaptive profile + the full-screen presentation
     └── AdvisorCard.swift         # phone card, iPad row, offer chips
 ```
 
-- **Clients own the data.** `AdvisorsClient` and `BookingClient` are small structs of `@Sendable` closures
-  registered as `DependencyKey`s. The mock advisors live in `AdvisorsClient.mockAdvisors`; `liveValue` is the mock
-  with a realistic delay, `previewValue` and `testValue` are instant. A real API client replaces `liveValue` and
-  nothing else changes.
-- **Reducers are pure.** `AdvisorsFeature` composes a child `ProfileFeature` per advisor with `forEach`; filtering
-  is a derived property of state, so there is nothing to keep in sync.
-- **Navigation is state.** The iPhone stack binds to `path: [Advisor.ID]`; the iPad detail pane reads
-  `selection`. Both resolve a scoped child store from the same `profiles` collection.
+- **Clients own the data.** `AdvisorsClient` and `BookingClient` are `@DependencyClient` structs. The mock
+  advisors live in `AdvisorsClient.mockAdvisors`; `liveValue` is the mock with a realistic delay, `previewValue`
+  is instant, and `testValue` is unimplemented, so a test fails unless it overrides the client. A real API client
+  replaces `liveValue` and nothing else changes.
+- **Reducers are pure.** Advisors are stored once; filtering is a derived property of state, so there is nothing
+  to keep in sync.
+- **Navigation is state.** The iPhone stack is driven by `StackState<ProfileFeature.State>` and the iPad detail
+  pane by `@Presents`, each a real child `ProfileFeature` with its own booking and toast effects, cancelled when
+  the profile is popped.
 - **Loading, failure and empty states** are modelled (`Phase`), with a retry action and a "Clear filters" action.
 
 ## Tech stack
@@ -109,7 +110,7 @@ xcodebuild test -project SideKixDemo.xcodeproj -scheme SideKixDemo \
   -skipMacroValidation -skipPackagePluginValidation
 ```
 
-Nine tests, all against the mock clients:
+Tests run against the mock clients (the `SideKixDemoTests` target):
 
 - **Loading** — the list is filled from `AdvisorsClient`, the first advisor is selected, a profile child is built
   for each advisor.
@@ -139,6 +140,8 @@ The app accepts launch arguments that put it in a specific state — this is how
 | `-demoQuery tom` | Type a search |
 | `-demoScrollTo a3` | Scroll a card up under the top bar |
 
+(Debug builds only.)
+
 ```shell
 xcrun simctl launch booted com.davidmorenoengineer.sidekixdemo -demoAdvisor a2 -demoImmersive
 xcrun simctl io booted screenshot docs/screenshots/example.png
@@ -146,13 +149,21 @@ xcrun simctl io booted screenshot docs/screenshots/example.png
 
 ### Build notes
 
-- **Debug dylib and package modules.** With Xcode 16.2, the app and test targets list TCA's lower-level modules
-  (`Dependencies`, `CasePaths`, `IdentifiedCollections`, `Clocks`, `ConcurrencyExtras`, `CustomDump`) as direct
+- **Debug dylib and package modules.** With Xcode 16, the app and test targets list TCA's lower-level modules
+  (`Dependencies`, `CasePaths`, `IdentifiedCollections`, `Clocks`, `ConcurrencyExtras`, `CustomDump`,
+  `Perception`, `IssueReporting`, `SwiftNavigation`, `OrderedCollections`) as direct
   dependencies in `project.yml`; without them the linker reports undefined symbols for modules TCA re-exports.
 - **`swift-navigation` is pinned to 2.2.3.** SwiftPM otherwise resolves a release that needs a newer Swift than
   Xcode 16.2 ships.
 - **`-skipMacroValidation`** is required on the command line because TCA ships Swift macros.
 - If a build fails to link after changing packages, delete `DerivedBuild` / DerivedData and build again.
+
+Demo code (launch arguments, scroll helper) is compiled only in Debug.
+
+### Demo videos
+
+`tool/record_demo.sh <udid> <phone|pad>` records a scripted tour (`SideKixDemoUITests`) on one simulator and
+trims it with ffmpeg. It refuses to run if another simulator is booted.
 
 ## How the screenshots were made
 

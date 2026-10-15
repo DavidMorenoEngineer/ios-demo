@@ -28,6 +28,15 @@ packages:
   CustomDump:
     url: https://github.com/pointfreeco/swift-custom-dump
     from: 1.6.0
+  Perception:
+    url: https://github.com/pointfreeco/swift-perception
+    from: 1.6.0
+  IssueReporting:
+    url: https://github.com/pointfreeco/xctest-dynamic-overlay
+    from: 1.4.0
+  Collections:
+    url: https://github.com/apple/swift-collections
+    from: 1.1.4
   # Transitive dependency pinned to a release that builds with Xcode 16.2 (Swift 6.0).
   SwiftNavigation:
     url: https://github.com/pointfreeco/swift-navigation
@@ -46,8 +55,12 @@ targets:
       - package: ComposableArchitecture
       - package: SwiftDependencies
         product: Dependencies
+      - package: SwiftDependencies
+        product: DependenciesMacros
       - package: IdentifiedCollections
         product: IdentifiedCollections
+      - package: Collections
+        product: OrderedCollections
       - package: CasePaths
         product: CasePaths
       - package: Clocks
@@ -56,6 +69,8 @@ targets:
         product: ConcurrencyExtras
       - package: CustomDump
         product: CustomDump
+      - package: Perception
+      - package: IssueReporting
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.davidmorenoengineer.sidekixdemo
@@ -76,8 +91,12 @@ targets:
       - package: ComposableArchitecture
       - package: SwiftDependencies
         product: Dependencies
+      - package: SwiftDependencies
+        product: DependenciesMacros
       - package: IdentifiedCollections
         product: IdentifiedCollections
+      - package: Collections
+        product: OrderedCollections
       - package: CasePaths
         product: CasePaths
       - package: Clocks
@@ -86,14 +105,27 @@ targets:
         product: ConcurrencyExtras
       - package: CustomDump
         product: CustomDump
+      - package: Perception
+      - package: IssueReporting
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.davidmorenoengineer.sidekixdemo.tests
+  SideKixDemoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [SideKixDemoUITests]
+    dependencies:
+      - target: SideKixDemo
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.davidmorenoengineer.sidekixdemo.uitests
+        TEST_TARGET_NAME: SideKixDemo
 schemes:
   SideKixDemo:
     build:
       targets:
         SideKixDemo: all
     test:
-      targets: [SideKixDemoTests]
+      targets: [SideKixDemoTests, SideKixDemoUITests]

@@ -6,7 +6,6 @@ import SwiftUI
 struct AdvisorsView: View {
     @Bindable var store: StoreOf<AdvisorsFeature>
     @Environment(\.horizontalSizeClass) private var hSize
-    private let demo = DemoOptions.current
 
     var body: some View {
         Group {
@@ -18,29 +17,7 @@ struct AdvisorsView: View {
         }
         .environment(\.isRegularWidth, hSize == .regular)
         .tint(SX.gold)
-        .task {
-            await store.send(.task).finish()
-            await applyDemo()
-        }
-    }
-
-    /// Puts the app in a specific state for screenshots (see `DemoOptions`).
-    private func applyDemo() async {
-        if demo.landscape,
-           let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscape))
-            try? await Task.sleep(for: .seconds(1))
-        }
-        if let query = demo.query { store.send(.binding(.set(\.query, query))) }
-        if let offer = demo.offer { store.send(.binding(.set(\.offerFilter, offer))) }
-        if let id = demo.advisorID {
-            store.send(.advisorOpened(id))
-            if demo.immersive {
-                // Let the push finish first; a real user taps after it settles.
-                try? await Task.sleep(for: .seconds(1.2))
-                store.send(.profiles(.element(id: id, action: .expandTapped)))
-            }
-        }
+        .task { await store.send(.task).finish() }
     }
 }
 
@@ -50,7 +27,7 @@ private struct AdvisorsStackView: View {
     @Bindable var store: StoreOf<AdvisorsFeature>
 
     var body: some View {
-        NavigationStack(path: $store.path) {
+        NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
             ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 14) {
@@ -63,21 +40,13 @@ private struct AdvisorsStackView: View {
                 .frame(maxWidth: 680)
                 .frame(maxWidth: .infinity)
             }
-            .onChange(of: store.phase) { _, phase in
-                // Demo only: scroll a card up under the translucent bar.
-                if phase == .loaded, let id = DemoOptions.current.scrollTo {
-                    proxy.scrollTo(id, anchor: UnitPoint(x: 0.5, y: 0.22))
-                }
-            }
+            .demoScroll(proxy: proxy, isLoaded: store.phase == .loaded)
             .background(SX.bg)
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) { topBar }
-            .navigationDestination(for: Advisor.ID.self) { id in
-                if let profile = store.scope(state: \.profiles[id: id], action: \.profiles[id: id]) {
-                    AdvisorProfileView(store: profile)
-                }
             }
-            }
+        } destination: { profileStore in
+            AdvisorProfileView(store: profileStore)
         }
     }
 
@@ -124,10 +93,10 @@ private struct AdvisorsStackView: View {
             if store.results.isEmpty {
                 EmptyStateView(symbol: "magnifyingglass", title: "No advisors match",
                                message: "Try a different skill or clear the filters.",
-                               actionTitle: "Clear filters") { withAnimation { _ = store.send(.clearFiltersTapped) } }
+                               actionTitle: "Clear filters") { store.send(.clearFiltersTapped, animation: .default) }
             } else {
                 ForEach(store.results) { advisor in
-                    NavigationLink(value: advisor.id) { AdvisorCard(advisor: advisor) }
+                    NavigationLink(state: ProfileFeature.State(advisor: advisor)) { AdvisorCard(advisor: advisor) }
                         .buttonStyle(.plain)
                         .id(advisor.id)
                         .accessibilityIdentifier("advisor.\(advisor.id)")
@@ -152,9 +121,8 @@ private struct AdvisorsSplitView: View {
                 .navigationSplitViewColumnWidth(min: 400, ideal: 420, max: 460)
         } detail: {
             NavigationStack {
-                if let id = store.selection,
-                   let profile = store.scope(state: \.profiles[id: id], action: \.profiles[id: id]) {
-                    AdvisorProfileView(store: profile).id(id)
+                if let profile = store.scope(state: \.detail, action: \.detail.presented) {
+                    AdvisorProfileView(store: profile).id(profile.advisor.id)
                 } else {
                     EmptyStateView(symbol: "person.2", title: "Pick an advisor",
                                    message: "Choose someone from the list to see their profile.")
@@ -163,6 +131,12 @@ private struct AdvisorsSplitView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        .onAppear { store.send(.splitViewAppeared) }
+    }
+
+    /// The list's selection is the open detail profile; picking a row is an action.
+    private var selection: Binding<Advisor.ID?> {
+        Binding(get: { store.detail?.id }, set: { store.send(.advisorSelected($0)) })
     }
 
     private var sidebar: some View {
@@ -189,11 +163,11 @@ private struct AdvisorsSplitView: View {
                 if store.results.isEmpty {
                     EmptyStateView(symbol: "magnifyingglass", title: "No advisors match",
                                    message: "Try a different skill or clear the filters.",
-                                   actionTitle: "Clear filters") { withAnimation { _ = store.send(.clearFiltersTapped) } }
+                                   actionTitle: "Clear filters") { store.send(.clearFiltersTapped, animation: .default) }
                     Spacer()
                 } else {
-                    List(store.results, selection: $store.selection) { advisor in
-                        AdvisorRow(advisor: advisor, isSelected: store.selection == advisor.id)
+                    List(store.results, selection: selection) { advisor in
+                        AdvisorRow(advisor: advisor, isSelected: store.detail?.id == advisor.id)
                             .tag(advisor.id)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
